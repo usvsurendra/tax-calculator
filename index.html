@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tax Calculator 2026-27</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial;
+  margin:0;
+  background: linear-gradient(135deg,#c9def4,#f5ccd4);
+}
+.container {max-width:950px;margin:auto;padding:20px;}
+.card {
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  margin-top:20px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+input {
+  width:100%;
+  padding:10px;
+  margin:6px 0;
+}
+button {
+  width:100%;
+  padding:12px;
+  background:#6c63ff;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2 style="text-align:center;">💰 Advanced Tax Calculator 2026-27</h2>
+
+<div class="card">
+<h3>Income</h3>
+<input id="salary" type="number" placeholder="Salary ₹">
+<input id="other" type="number" placeholder="Other Income ₹">
+
+<h3>Capital Gains</h3>
+<input id="stcg" type="number" placeholder="Short Term Gains ₹">
+<input id="ltcg" type="number" placeholder="Long Term Gains ₹">
+
+<h3>Deductions</h3>
+<input id="d80c" type="number" placeholder="80C ₹ (max 1.5L)">
+<input id="d80d" type="number" placeholder="80D ₹">
+
+<button onclick="calcTax()">Calculate</button>
+</div>
+
+<div class="card">
+<h3>Results</h3>
+<div id="newTax"></div>
+<div id="oldTax"></div>
+<div id="surcharge"></div>
+<div id="better"></div>
+
+<button onclick="downloadPDF()">Download PDF</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf"></script>
+
+<script>
+function calcNew(income){
+  let tax=0;
+  if(income>1500000){tax+=(income-1500000)*0.30; income=1500000;}
+  if(income>1200000){tax+=(income-1200000)*0.20; income=1200000;}
+  if(income>900000){tax+=(income-900000)*0.15; income=900000;}
+  if(income>600000){tax+=(income-600000)*0.10; income=600000;}
+  if(income>300000){tax+=(income-300000)*0.05;}
+  return tax;
+}
+
+function calcOld(income){
+  let tax=0;
+  if(income>1000000){tax+=(income-1000000)*0.30; income=1000000;}
+  if(income>500000){tax+=(income-500000)*0.20; income=500000;}
+  if(income>250000){tax+=(income-250000)*0.05;}
+  return tax;
+}
+
+function capitalGainsTax(stcg, ltcg){
+  let st = stcg * 0.15;
+  let lt = (ltcg>100000) ? (ltcg-100000)*0.10 : 0;
+  return st + lt;
+}
+
+function surchargeCalc(income, tax){
+  let rate=0;
+  if(income>50000000) rate=0.37;
+  else if(income>20000000) rate=0.25;
+  else if(income>10000000) rate=0.15;
+  else if(income>5000000) rate=0.10;
+  return tax * rate;
+}
+
+function marginalRelief(income, tax){
+  let limit=5000000;
+  if(income>limit){
+    let excess = income - limit;
+    if(tax > excess){
+      return excess;
+    }
+  }
+  return tax;
+}
+
+function calcTax(){
+  let salary = +document.getElementById("salary").value || 0;
+  let other = +document.getElementById("other").value || 0;
+  let stcg = +document.getElementById("stcg").value || 0;
+  let ltcg = +document.getElementById("ltcg").value || 0;
+
+  let d80c = Math.min(+document.getElementById("d80c").value || 0,150000);
+  let d80d = +document.getElementById("d80d").value || 0;
+
+  let income = salary + other;
+
+  let newTax = calcNew(income);
+  newTax += capitalGainsTax(stcg, ltcg);
+
+  let surcharge = surchargeCalc(income, newTax);
+  newTax += surcharge;
+
+  newTax = marginalRelief(income, newTax);
+  newTax *= 1.04;
+
+  let taxableOld = income - (50000 + d80c + d80d);
+  let oldTax = calcOld(taxableOld);
+  oldTax += capitalGainsTax(stcg, ltcg);
+  oldTax *= 1.04;
+
+  document.getElementById("newTax").innerHTML = "New Regime Tax: ₹ " + Math.round(newTax);
+  document.getElementById("oldTax").innerHTML = "Old Regime Tax: ₹ " + Math.round(oldTax);
+  document.getElementById("surcharge").innerHTML = "Surcharge: ₹ " + Math.round(surcharge);
+  document.getElementById("better").innerHTML =
+    newTax < oldTax ? "✅ New Regime Better" : "✅ Old Regime Better";
+}
+
+function downloadPDF(){
+  const { jsPDF } = window.jspdf;
+  let doc = new jsPDF();
+
+  doc.text("Tax Report 2026-27", 20, 20);
+  doc.text(document.getElementById("newTax").innerText, 20, 40);
+  doc.text(document.getElementById("oldTax").innerText, 20, 50);
+
+  doc.save("tax-report.pdf");
+}
+</script>
+
+</body>
+</html>
